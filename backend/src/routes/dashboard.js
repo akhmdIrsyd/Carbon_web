@@ -26,9 +26,23 @@ router.get('/stats', async (req, res) => {
     );
 
     const [severityCounts] = await pool.query(
-      `SELECT severity, COUNT(*) AS count, COALESCE(SUM(carbon_amount), 0) AS total
-       FROM carbon_records WHERE recorded_at BETWEEN ? AND ?
-       GROUP BY severity ORDER BY FIELD(severity, 'Aman','Waspada','Siaga','Berbahaya','Sangat Berbahaya')`,
+      `SELECT severity, COUNT(*) AS count, COALESCE(SUM(total_carbon), 0) AS total
+       FROM (
+         SELECT r.id,
+           CASE
+             WHEN COALESCE(SUM(c.carbon_amount), 0) <= 100 THEN 'Aman'
+             WHEN COALESCE(SUM(c.carbon_amount), 0) <= 300 THEN 'Waspada'
+             WHEN COALESCE(SUM(c.carbon_amount), 0) <= 500 THEN 'Siaga'
+             WHEN COALESCE(SUM(c.carbon_amount), 0) <= 700 THEN 'Berbahaya'
+             ELSE 'Sangat Berbahaya'
+           END AS severity,
+           COALESCE(SUM(c.carbon_amount), 0) AS total_carbon
+         FROM regions r
+         LEFT JOIN carbon_records c ON r.id = c.region_id AND c.recorded_at BETWEEN ? AND ?
+         GROUP BY r.id
+       ) sub
+       GROUP BY severity
+       ORDER BY FIELD(severity, 'Aman','Waspada','Siaga','Berbahaya','Sangat Berbahaya')`,
       [firstDay, lastDay]
     );
 
@@ -51,10 +65,16 @@ router.get('/stats', async (req, res) => {
       `SELECT r.id, r.name, r.latitude, r.longitude,
               COALESCE(SUM(c.carbon_amount), 0) AS total_carbon,
               COUNT(c.id) AS record_count,
-              (SELECT severity FROM carbon_records WHERE region_id = r.id AND recorded_at BETWEEN ? AND ? ORDER BY recorded_at DESC LIMIT 1) AS latest_severity
+              CASE
+                WHEN COALESCE(SUM(c.carbon_amount), 0) <= 100 THEN 'Aman'
+                WHEN COALESCE(SUM(c.carbon_amount), 0) <= 300 THEN 'Waspada'
+                WHEN COALESCE(SUM(c.carbon_amount), 0) <= 500 THEN 'Siaga'
+                WHEN COALESCE(SUM(c.carbon_amount), 0) <= 700 THEN 'Berbahaya'
+                ELSE 'Sangat Berbahaya'
+              END AS latest_severity
        FROM regions r LEFT JOIN carbon_records c ON r.id = c.region_id AND c.recorded_at BETWEEN ? AND ?
        GROUP BY r.id ORDER BY total_carbon DESC`,
-      [firstDay, lastDay, firstDay, lastDay]
+      [firstDay, lastDay]
     );
 
     const [trendData] = await pool.query(

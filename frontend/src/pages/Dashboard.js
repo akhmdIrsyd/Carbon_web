@@ -127,7 +127,7 @@ export default function Dashboard() {
 
       <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
         <div style={{ ...card, flex: 1, minWidth: 320 }}>
-          <h3 style={sectionTitle}><IconPie /> Keparahan Bulan Ini</h3>
+          <h3 style={sectionTitle}><IconPie /> Keparahan Wilayah Bulan Ini</h3>
           {stats.severityCounts.length === 0 ? (
             <div style={{ color: '#999', textAlign: 'center', padding: '50px 0', fontSize: 13 }}>Belum ada data</div>
           ) : (
