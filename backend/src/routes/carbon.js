@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
 
 router.get('/report/data', async (req, res) => {
   try {
-    const { region_id, year, month } = req.query;
+    const { region_id, month_start, month_end } = req.query;
     let query = `
       SELECT c.*, r.name AS region_name
       FROM carbon_records c
@@ -49,14 +49,17 @@ router.get('/report/data', async (req, res) => {
       conditions.push('c.region_id = ?');
       params.push(region_id);
     }
-    if (year && month) {
-      const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
-      const lastDay = `${year}-${String(month).padStart(2, '0')}-${new Date(parseInt(year), parseInt(month), 0).getDate()}`;
+    if (month_start && month_end) {
+      const lastDay = `${month_end}-${new Date(parseInt(month_end.split('-')[0]), parseInt(month_end.split('-')[1]), 0).getDate()}`;
       conditions.push('c.recorded_at BETWEEN ? AND ?');
-      params.push(firstDay, lastDay);
-    } else if (year) {
-      conditions.push('YEAR(c.recorded_at) = ?');
-      params.push(year);
+      params.push(month_start + '-01', lastDay);
+    } else if (month_start) {
+      conditions.push('c.recorded_at >= ?');
+      params.push(month_start + '-01');
+    } else if (month_end) {
+      const lastDay = `${month_end}-${new Date(parseInt(month_end.split('-')[0]), parseInt(month_end.split('-')[1]), 0).getDate()}`;
+      conditions.push('c.recorded_at <= ?');
+      params.push(lastDay);
     }
     if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ');
     query += ' ORDER BY c.recorded_at ASC, c.created_at ASC';
@@ -70,11 +73,20 @@ router.get('/report/data', async (req, res) => {
     const maxCarbon = amounts.length > 0 ? Math.max(...amounts) : 0;
     const minCarbon = amounts.length > 0 ? Math.min(...amounts) : 0;
 
+    const formatMonth = (m) => {
+      if (!m) return 'Semua';
+      const [y, mo] = m.split('-');
+      const names = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      return `${names[parseInt(mo)]} ${y}`;
+    };
+
     res.json({
       region_id: region_id ? Number(region_id) : null,
       region_name: rows[0]?.region_name || '',
-      year: year || 'Semua',
-      month: month || 'Semua',
+      month_start: month_start || '',
+      month_end: month_end || '',
+      month_start_label: formatMonth(month_start),
+      month_end_label: formatMonth(month_end),
       summary: { totalRecords, totalCarbon: totalCarbon.toFixed(2), avgCarbon: avgCarbon.toFixed(2), maxCarbon, minCarbon },
       records: rows,
     });

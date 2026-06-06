@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api from '../api';
 import { IconPlus, IconEdit, IconTrash, IconSearch, IconCalendar, IconNote, IconCo2, IconLocation, IconCheck, IconLayer, IconX } from '../components/Icons';
 
@@ -14,6 +14,46 @@ function SortIcon({ dir }) { return <span style={{ fontSize: 10, marginLeft: 4, 
 const severityColors = { Aman: '#27ae60', Waspada: '#f39c12', Siaga: '#e67e22', Berbahaya: '#e74c3c', 'Sangat Berbahaya': '#8e44ad' };
 const severityMeta = { Aman: { label: 'Aman', desc: 'Karbon rendah, lingkungan sehat' }, Waspada: { label: 'Waspada', desc: 'Karbon mulai meningkat, perlu pemantauan' }, Siaga: { label: 'Siaga', desc: 'Karbon cukup tinggi, waspada dampak lingkungan' }, Berbahaya: { label: 'Berbahaya', desc: 'Karbon tinggi, berbahaya bagi kesehatan' }, 'Sangat Berbahaya': { label: 'Sangat Berbahaya', desc: 'Karbon sangat tinggi, kondisi darurat!' } };
 
+const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+function MonthPicker({ value, onChange, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const [year, setYear] = useState(value ? parseInt(value.split('-')[0]) : new Date().getFullYear());
+  useEffect(() => { if (open && value) setYear(parseInt(value.split('-')[0])); }, [open, value]);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button type="button" onClick={() => setOpen(!open)}
+        style={{ width: '100%', padding: '10px 14px', border: '1px solid #d1d9e6', borderRadius: 10, fontSize: 13, background: '#fff', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, color: value ? '#1a1a2e' : '#9ca3af', fontFamily: 'inherit', boxSizing: 'border-box' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        {value ? `${monthShort[parseInt(value.split('-')[1]) - 1]} ${value.split('-')[0]}` : placeholder || 'Pilih bulan'}
+        <svg style={{ marginLeft: 'auto' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      {open && (
+        <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, background: '#fff', borderRadius: 14, boxShadow: '0 16px 50px rgba(0,0,0,0.25)', padding: 20, width: 280, border: '1px solid #eef0f4' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <button type="button" onClick={() => setYear(year - 1)} style={{ background: '#f3f4f6', border: 'none', borderRadius: 8, width: 34, height: 34, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4b5563' }}>&lsaquo;</button>
+            <span style={{ fontWeight: 700, fontSize: 16, color: '#1a1a2e' }}>{year}</span>
+            <button type="button" onClick={() => setYear(year + 1)} style={{ background: '#f3f4f6', border: 'none', borderRadius: 8, width: 34, height: 34, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4b5563' }}>&rsaquo;</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            {monthShort.map((m, i) => {
+              const val = `${year}-${String(i + 1).padStart(2, '0')}`;
+              const sel = value === val;
+              return (
+                <button key={i} type="button" onClick={() => { onChange(val); setOpen(false); }}
+                  style={{ padding: '10px 0', borderRadius: 10, cursor: 'pointer', background: sel ? '#4f46e5' : '#f3f4f6', color: sel ? '#fff' : '#374151', fontWeight: sel ? 700 : 500, fontSize: 13, border: 'none' }}>{m}</button>
+              );
+            })}
+          </div>
+          <button type="button" onClick={() => setOpen(false)} style={{ width: '100%', marginTop: 10, padding: '8px', border: '1px solid #e0e4e8', borderRadius: 8, background: '#fff', cursor: 'pointer', fontSize: 12, color: '#6b7280' }}>Tutup</button>
+        </div>
+      )}
+      {open && <div style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'transparent' }} onClick={() => setOpen(false)} />}
+    </div>
+  );
+}
+
 export default function CarbonRecords() {
   const [records, setRecords] = useState([]);
   const [regions, setRegions] = useState([]);
@@ -25,11 +65,13 @@ export default function CarbonRecords() {
   const [sort, setSort] = useState({ key: '', dir: '' });
   const [form, setForm] = useState({ region_id: '', carbon_amount: '', recorded_at: '', notes: '' });
   const [showReport, setShowReport] = useState(false);
-  const [reportFilter, setReportFilter] = useState({ region_id: '', year: '', month: '' });
+  const [reportFilter, setReportFilter] = useState({ region_id: '', periodStart: '', periodEnd: '' });
   const [reportData, setReportData] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
-  const reportYears = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i);
-  const months = [{ v: '', l: 'Semua Bulan' }, { v: '1', l: 'Januari' }, { v: '2', l: 'Februari' }, { v: '3', l: 'Maret' }, { v: '4', l: 'April' }, { v: '5', l: 'Mei' }, { v: '6', l: 'Juni' }, { v: '7', l: 'Juli' }, { v: '8', l: 'Agustus' }, { v: '9', l: 'September' }, { v: '10', l: 'Oktober' }, { v: '11', l: 'November' }, { v: '12', l: 'Desember' }];
+  const monthNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const now = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const curYear = String(now.getFullYear());
 
   const loadData = () => { api.get('/api/regions').then((r) => setRegions(r.data)); api.get('/api/carbon', { params: filter ? { region_id: filter } : {} }).then((r) => setRecords(r.data)); };
   useEffect(() => { loadData(); }, [filter]);
@@ -73,7 +115,7 @@ export default function CarbonRecords() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ ...selectStyle, marginBottom: 0, width: 180 }}><option value="">Semua Wilayah</option>{regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
           <button onClick={() => { resetForm(); setShowForm(!showForm); }} style={{ ...btnBase, background: showForm ? '#e74c3c' : '#1a1a2e', color: '#fff' }}><IconPlus /> {showForm ? 'Batal' : 'Tambah Record'}</button>
-          <button onClick={() => { setShowReport(true); setReportData(null); setReportFilter({ region_id: '', year: '', month: '' }); }} style={{ ...btnBase, background: '#4f46e5', color: '#fff' }}><IconLayer /> Laporan</button>
+          <button onClick={() => { setShowReport(true); setReportData(null); setReportFilter({ region_id: '', periodStart: '', periodEnd: '' }); }} style={{ ...btnBase, background: '#4f46e5', color: '#fff' }}><IconLayer /> Laporan</button>
         </div>
       </div>
 
@@ -139,46 +181,49 @@ export default function CarbonRecords() {
 
       {showReport && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#fff', borderRadius: 16, maxWidth: 960, width: '100%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #eee' }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1a1a2e', margin: 0 }}><IconLayer /> Laporan Detail Karbon</h2>
+          <div style={{ background: '#fff', borderRadius: 16, maxWidth: 1200, width: '100%', maxHeight: '95vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 28px', borderBottom: '1px solid #eef0f4' }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', margin: 0 }}><IconLayer /> Laporan Detail Karbon</h2>
               <button onClick={() => setShowReport(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#888', padding: 4 }}><IconX /></button>
             </div>
-            <div style={{ padding: '20px 24px' }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 20 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#666', marginBottom: 4 }}>Wilayah</label>
-                  <select value={reportFilter.region_id} onChange={(e) => setReportFilter({ ...reportFilter, region_id: e.target.value })} style={{ ...selectStyle, marginBottom: 0, width: 220 }}>
-                    <option value="">Semua Wilayah</option>
-                    {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
+            <div style={{ padding: '24px 28px', overflow: 'auto', flex: 1 }}>
+              <div style={{ background: 'linear-gradient(135deg, #f8faff 0%, #f0f3ff 100%)', borderRadius: 16, padding: '20px 24px', marginBottom: 20, border: '1px solid #e4e9f2' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr auto', gap: 14, alignItems: 'end' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#4b5563', marginBottom: 6 }}><IconLocation /> Wilayah</label>
+                    <select value={reportFilter.region_id} onChange={(e) => setReportFilter({ ...reportFilter, region_id: e.target.value })} style={{ width: '100%', padding: '10px 14px', border: '1px solid #d1d9e6', borderRadius: 10, fontSize: 13, fontWeight: 500, background: '#fff', outline: 'none', boxSizing: 'border-box' }}>
+                      <option value="">Semua Wilayah</option>
+                      {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#4b5563', marginBottom: 6 }}>Dari Bulan</label>
+                    <MonthPicker value={reportFilter.periodStart} onChange={(v) => setReportFilter({ ...reportFilter, periodStart: v })} placeholder="Pilih" />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#4b5563', marginBottom: 6 }}>Sampai Bulan</label>
+                    <MonthPicker value={reportFilter.periodEnd} onChange={(v) => setReportFilter({ ...reportFilter, periodEnd: v })} placeholder="Pilih" />
+                  </div>
+                  <div>
+                    <button disabled={reportLoading} onClick={async () => {
+                      setReportLoading(true); setReportData(null);
+                      try {
+                        const params = {};
+                        if (reportFilter.region_id) params.region_id = reportFilter.region_id;
+                        if (reportFilter.periodStart) params.month_start = reportFilter.periodStart;
+                        if (reportFilter.periodEnd) params.month_end = reportFilter.periodEnd;
+                        const r = await api.get('/api/carbon/report/data', { params }); setReportData(r.data);
+                      } catch (err) { alert(err.response?.data?.message || 'Gagal memuat laporan'); }
+                      setReportLoading(false);
+                    }} style={{
+                      ...btnBase, background: '#1a1a2e', color: '#fff',
+                      padding: '10px 22px', fontSize: 13, borderRadius: 10,
+                      opacity: reportLoading ? 0.6 : 1, width: '100%', justifyContent: 'center',
+                    }}>
+                      {reportLoading ? 'Memuat...' : 'Tampilkan'}
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#666', marginBottom: 4 }}>Tahun</label>
-                  <select value={reportFilter.year} onChange={(e) => setReportFilter({ ...reportFilter, year: e.target.value })} style={{ ...selectStyle, marginBottom: 0, width: 130 }}>
-                    <option value="">Semua Tahun</option>
-                    {reportYears.map((y) => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#666', marginBottom: 4 }}>Bulan</label>
-                  <select value={reportFilter.month} onChange={(e) => setReportFilter({ ...reportFilter, month: e.target.value })} style={{ ...selectStyle, marginBottom: 0, width: 150 }}>
-                    {months.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}
-                  </select>
-                </div>
-                <button disabled={reportLoading} onClick={async () => {
-                  setReportLoading(true); setReportData(null);
-                  try {
-                    const params = {};
-                    if (reportFilter.region_id) params.region_id = reportFilter.region_id;
-                    if (reportFilter.year) params.year = reportFilter.year;
-                    if (reportFilter.month) params.month = reportFilter.month;
-                    const r = await api.get('/api/carbon/report/data', { params }); setReportData(r.data);
-                  } catch (err) { alert(err.response?.data?.message || 'Gagal memuat laporan'); }
-                  setReportLoading(false);
-                }} style={{ ...btnBase, background: '#4f46e5', color: '#fff', opacity: reportLoading ? 0.6 : 1 }}>
-                  {reportLoading ? 'Memuat...' : 'Tampilkan'}
-                </button>
               </div>
 
               {reportData && reportData.records.length > 0 && (
@@ -194,10 +239,8 @@ export default function CarbonRecords() {
                         <td style="padding:6px 10px">${r.notes || '-'}</td>
                       </tr>`
                     ).join('');
-                    const regionLabel = reportData.region_name || 'Semua Wilayah';
-                    const periodLabel = reportData.month !== 'Semua'
-                      ? `${months.find(m=>m.v===reportData.month)?.l || ''} ${reportData.year}`
-                      : reportData.year !== 'Semua' ? `Tahun ${reportData.year}` : 'Semua Periode';
+                    const regionLabel = reportFilter.region_id ? reportData.region_name : 'Semua Wilayah';
+                    const periodLabel = reportFilter.periodStart || reportFilter.periodEnd ? `${reportFilter.periodStart ? `${monthNames[parseInt(reportFilter.periodStart.split('-')[1])]} ${reportFilter.periodStart.split('-')[0]}` : '...'} - ${reportFilter.periodEnd ? `${monthNames[parseInt(reportFilter.periodEnd.split('-')[1])]} ${reportFilter.periodEnd.split('-')[0]}` : '...'}` : 'Semua Periode';
                     w.document.write(`
                       <html><head><title>Laporan Karbon - ${regionLabel}</title>
                       <style>
@@ -244,7 +287,7 @@ export default function CarbonRecords() {
                     <div style={{ background: '#f8f9fa', borderRadius: 10, padding: '14px 16px' }}><div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>Maksimum</div><div style={{ fontSize: 20, fontWeight: 700, color: '#e74c3c' }}>{reportData.summary.maxCarbon} ppm</div></div>
                     <div style={{ background: '#f8f9fa', borderRadius: 10, padding: '14px 16px' }}><div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>Minimum</div><div style={{ fontSize: 20, fontWeight: 700, color: '#27ae60' }}>{reportData.summary.minCarbon} ppm</div></div>
                   </div>
-                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#333', margin: '0 0 12px' }}>Detail Record — {reportData.region_name || 'Semua Wilayah'} — {reportData.month !== 'Semua' ? `${months.find(m=>m.v===reportData.month)?.l || ''} ${reportData.year}` : reportData.year !== 'Semua' ? `Tahun ${reportData.year}` : 'Semua Periode'}</h3>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, color: '#333', margin: '0 0 12px' }}>Detail Record — {reportFilter.region_id ? reportData.region_name : 'Semua Wilayah'} — {reportFilter.periodStart || reportFilter.periodEnd ? `${reportFilter.periodStart ? `${monthNames[parseInt(reportFilter.periodStart.split('-')[1])]} ${reportFilter.periodStart.split('-')[0]}` : '...'} - ${reportFilter.periodEnd ? `${monthNames[parseInt(reportFilter.periodEnd.split('-')[1])]} ${reportFilter.periodEnd.split('-')[0]}` : '...'}` : 'Semua Periode'}</h3>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
