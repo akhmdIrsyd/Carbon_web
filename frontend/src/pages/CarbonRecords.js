@@ -233,6 +233,7 @@ export default function CarbonRecords() {
                     const rows = reportData.records.map((r, i) =>
                       `<tr${i % 2 === 0 ? ' style="background:#f9f9f9"' : ''}>
                         <td style="padding:6px 10px;text-align:center">${i + 1}</td>
+                        <td style="padding:6px 10px">${r.region_name || '-'}</td>
                         <td style="padding:6px 10px;text-align:right">${Number(r.carbon_amount).toLocaleString()}</td>
                         <td style="padding:6px 10px;text-align:center"><span style="display:inline-block;padding:1px 10px;border-radius:10px;font-size:11px;font-weight:600;color:#fff;background:${severityColors[r.severity] || '#ccc'}">${r.severity}</span></td>
                         <td style="padding:6px 10px;text-align:center">${new Date(r.recorded_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
@@ -266,7 +267,7 @@ export default function CarbonRecords() {
                           <div class="card"><label>Minimum</label><div class="val">${reportData.summary.minCarbon} ppm</div></div>
                         </div>
                         <table>
-                          <thead><tr><th>#</th><th style="text-align:right">Karbon (ppm)</th><th style="text-align:center">Keparahan</th><th style="text-align:center">Tanggal</th><th style="text-align:left">Catatan</th></tr></thead>
+                          <thead><tr><th>#</th><th style="text-align:left">Wilayah</th><th style="text-align:right">Karbon (ppm)</th><th style="text-align:center">Keparahan</th><th style="text-align:center">Tanggal</th><th style="text-align:left">Catatan</th></tr></thead>
                           <tbody>${rows}</tbody>
                         </table>
                         <p style="text-align:center;color:#aaa;margin-top:30px;font-size:11px" class="no-print">Laporan ini digenerate dari Sistem Monitoring Karbon</p>
@@ -293,6 +294,7 @@ export default function CarbonRecords() {
                       <thead>
                         <tr style={{ borderBottom: '2px solid #f0f2f5' }}>
                           <th style={{ ...thNoSort, textAlign: 'left' }}>#</th>
+                          <th style={{ ...thNoSort, textAlign: 'left' }}>Wilayah</th>
                           <th style={{ ...thNoSort, textAlign: 'right' }}>Karbon (ppm)</th>
                           <th style={{ ...thNoSort, textAlign: 'center' }}>Keparahan</th>
                           <th style={{ ...thNoSort, textAlign: 'center' }}>Tanggal</th>
@@ -303,13 +305,14 @@ export default function CarbonRecords() {
                         {reportData.records.map((r, i) => (
                           <tr key={r.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                             <td style={{ padding: '8px 12px', color: '#888' }}>{i + 1}</td>
+                            <td style={{ padding: '8px 12px', fontWeight: 500 }}>{r.region_name || '-'}</td>
                             <td style={{ padding: '8px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{Number(r.carbon_amount).toLocaleString()}</td>
                             <td style={{ padding: '8px 12px', textAlign: 'center' }}><span style={{ background: severityColors[r.severity] || '#ccc', color: '#fff', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>{r.severity}</span></td>
                             <td style={{ padding: '8px 12px', textAlign: 'center', color: '#666' }}>{new Date(r.recorded_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                             <td style={{ padding: '8px 12px', color: r.notes ? '#555' : '#ccc' }}>{r.notes || '-'}</td>
                           </tr>
                         ))}
-                        {reportData.records.length === 0 && <tr><td colSpan={5} style={{ padding: 40, textAlign: 'center', color: '#999' }}>Tidak ada data untuk periode ini</td></tr>}
+                        {reportData.records.length === 0 && <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#999' }}>Tidak ada data untuk periode ini</td></tr>}
                       </tbody>
                     </table>
                   </div>
