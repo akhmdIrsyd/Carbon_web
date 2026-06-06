@@ -35,6 +35,54 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/report/data', async (req, res) => {
+  try {
+    const { region_id, year, month } = req.query;
+    let query = `
+      SELECT c.*, r.name AS region_name
+      FROM carbon_records c
+      JOIN regions r ON c.region_id = r.id
+    `;
+    const conditions = [];
+    const params = [];
+    if (region_id) {
+      conditions.push('c.region_id = ?');
+      params.push(region_id);
+    }
+    if (year && month) {
+      const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
+      const lastDay = `${year}-${String(month).padStart(2, '0')}-${new Date(parseInt(year), parseInt(month), 0).getDate()}`;
+      conditions.push('c.recorded_at BETWEEN ? AND ?');
+      params.push(firstDay, lastDay);
+    } else if (year) {
+      conditions.push('YEAR(c.recorded_at) = ?');
+      params.push(year);
+    }
+    if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ');
+    query += ' ORDER BY c.recorded_at ASC, c.created_at ASC';
+
+    const [rows] = await pool.query(query, params);
+
+    const totalRecords = rows.length;
+    const totalCarbon = rows.reduce((s, r) => s + Number(r.carbon_amount), 0);
+    const avgCarbon = totalRecords > 0 ? totalCarbon / totalRecords : 0;
+    const amounts = rows.map((r) => Number(r.carbon_amount));
+    const maxCarbon = amounts.length > 0 ? Math.max(...amounts) : 0;
+    const minCarbon = amounts.length > 0 ? Math.min(...amounts) : 0;
+
+    res.json({
+      region_id: region_id ? Number(region_id) : null,
+      region_name: rows[0]?.region_name || '',
+      year: year || 'Semua',
+      month: month || 'Semua',
+      summary: { totalRecords, totalCarbon: totalCarbon.toFixed(2), avgCarbon: avgCarbon.toFixed(2), maxCarbon, minCarbon },
+      records: rows,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const [rows] = await pool.query(

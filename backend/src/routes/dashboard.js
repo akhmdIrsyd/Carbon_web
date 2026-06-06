@@ -9,8 +9,10 @@ router.use(authMiddleware);
 router.get('/stats', async (req, res) => {
   try {
     const now = new Date();
-    const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    const lastDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-31`;
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()}`;
 
     const [[{ totalRegions }]] = await pool.query('SELECT COUNT(*) AS totalRegions FROM regions');
     const [[{ totalRecords }]] = await pool.query('SELECT COUNT(*) AS totalRecords FROM carbon_records');
