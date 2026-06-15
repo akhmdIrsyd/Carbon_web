@@ -123,13 +123,13 @@ router.post('/', async (req, res) => {
     const severity = calculateSeverity(Number(carbon_amount));
     const date = recorded_at || new Date().toISOString().split('T')[0];
     const [result] = await pool.query(
-      'INSERT INTO carbon_records (region_id, carbon_amount, severity, recorded_at, notes) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO carbon_records (region_id, carbon_amount, severity, recorded_at, notes) VALUES (?, ?, ?, ?, ?) RETURNING id',
       [region_id, carbon_amount, severity, date, notes || '']
     );
     const [created] = await pool.query(
       `SELECT c.*, r.name AS region_name FROM carbon_records c
        JOIN regions r ON c.region_id = r.id WHERE c.id = ?`,
-      [result.insertId]
+      [result[0].id]
     );
     res.status(201).json(created[0]);
   } catch (err) {
@@ -177,3 +177,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.calculateSeverity = calculateSeverity;

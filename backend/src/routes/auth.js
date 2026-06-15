@@ -18,11 +18,11 @@ router.post('/register', async (req, res) => {
     }
     const hashed = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
+      'INSERT INTO users (name, email, password) VALUES (?, ?, ?) RETURNING id',
       [name, email, hashed]
     );
-    const token = jwt.sign({ id: result.insertId, name, email }, JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: result.insertId, name, email } });
+    const token = jwt.sign({ id: result[0].id, name, email }, JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ token, user: { id: result[0].id, name, email } });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

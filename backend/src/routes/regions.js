@@ -37,10 +37,10 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Name, latitude, longitude required' });
     }
     const [result] = await pool.query(
-      'INSERT INTO regions (name, latitude, longitude, description) VALUES (?, ?, ?, ?)',
+      'INSERT INTO regions (name, latitude, longitude, description) VALUES (?, ?, ?, ?) RETURNING id',
       [name, latitude, longitude, description || '']
     );
-    const [created] = await pool.query('SELECT * FROM regions WHERE id = ?', [result.insertId]);
+    const [created] = await pool.query('SELECT * FROM regions WHERE id = ?', [result[0].id]);
     res.status(201).json(created[0]);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -53,7 +53,7 @@ router.put('/:id', async (req, res) => {
     const [existing] = await pool.query('SELECT * FROM regions WHERE id = ?', [req.params.id]);
     if (existing.length === 0) return res.status(404).json({ message: 'Region not found' });
     await pool.query(
-      'UPDATE regions SET name = ?, latitude = ?, longitude = ?, description = ? WHERE id = ?',
+      'UPDATE regions SET name = ?, latitude = ?, longitude = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         name || existing[0].name,
         latitude != null ? latitude : existing[0].latitude,

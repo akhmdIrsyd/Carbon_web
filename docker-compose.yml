@@ -1,22 +1,19 @@
-version: '3.8'
-
 services:
   db:
-    image: mysql:8.0
+    image: postgres:15-alpine
     container_name: carbon_db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: carbon_monitor
-      MYSQL_USER: carbon_user
-      MYSQL_PASSWORD: carbon_pass
+      POSTGRES_DB: carbon_monitor
+      POSTGRES_USER: carbon_user
+      POSTGRES_PASSWORD: carbon_pass
     ports:
-      - "3307:3306"
+      - "5433:5432"
     volumes:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - db_data:/var/lib/mysql
+      - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U carbon_user -d carbon_monitor"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,7 +32,7 @@ services:
       DB_USER: carbon_user
       DB_PASSWORD: carbon_pass
       DB_NAME: carbon_monitor
-      DB_PORT: 3306
+      DB_PORT: 5432
       JWT_SECRET: carbon_secret_key_2026
       PORT: 5000
 
